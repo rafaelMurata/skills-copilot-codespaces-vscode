@@ -1,3 +1,4 @@
-function calculateNumbers(var1, var2) {
-    console.log(var1 + var2);
-}
+function calculateNumbers(var1, var2)   {
+    var total = var1 + var2;
+    return total;
+}   

@@ -1,46 +1,67 @@
-// Create a web server that can respond to requests for comments
-// and can save new comments to a file
+// Create web server
+// 
+var express = require("express");
+var app = express();
+var path = require("path");
+var bodyParser = require('body-parser');
+var mongoose = require('mongoose');
 
-// Load the http module to create an http server.
-var http = require('http');
-var fs = require('fs');
-var url = require('url');
-var querystring = require('querystring');
+// use body parser
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
-// Configure our HTTP server to respond with Hello World to all requests.
-var server = http.createServer(function (request, response) {
-  var parsedUrl = url.parse(request.url);
-  var parsedQuery = querystring.parse(parsedUrl.query);
-  var pathname = parsedUrl.pathname;
+// use public folder to serve static files
+app.use(express.static(path.join(__dirname, "./client/static")));
 
-  if (pathname === '/comments' && request.method === 'GET') {
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    fs.readFile('./comments.json', function (err, data) {
-      if (err) throw err;
-      response.end(data);
+// set up views folder and ejs
+app.set('views', path.join(__dirname, './client/views'));
+app.set('view engine', 'ejs');
+
+// connect to mongoose
+mongoose.connect('mongodb://localhost/animal_dashboard');
+
+// define animal schema
+var AnimalSchema = new mongoose.Schema({
+    name: { type: String, required: [true, "Name is required"], minlength: 2 },
+    type: { type: String, required: [true, "Type is required"], minlength: 2 },
+    description: { type: String, required: [true, "Description is required"], minlength: 2 },
+    likes: { type: Number, required: true }
+}, { timestamps: true });
+
+// set our models by passing them their respective Schemas
+mongoose.model('Animal', AnimalSchema);
+
+// store our models in variables
+var Animal = mongoose.model('Animal');
+
+// root route to render the index.ejs view
+app.get('/', function (req, res) {
+    // get all animals from db
+    Animal.find({}, function (err, animals) {
+        // console.log(animals);
+        if (err) {
+            console.log("Error finding all animals");
+            res.render('index', { errors: animals.errors });
+        } else {
+            console.log("Successfully found all animals");
+            res.render('index', { animals: animals });
+        }
     });
-  } else if (pathname === '/comments' && request.method === 'POST') {
-    var requestBody = '';
-    request.on('data', function(data) {
-      requestBody += data;
-    });
-    request.on('end', function() {
-      var comment = querystring.parse(requestBody);
-      fs.readFile('./comments.json', function (err, data) {
-        if (err) throw err;
-        var comments = JSON.parse(data);
-        comments.push(comment);
-        fs.writeFile('./comments.json', JSON.stringify(comments), function (err) {
-          if (err) throw err;
-          console.log('It\'s saved!');
-          response.end();
-        });
-      });
-    });
-  } else {
-    response.writeHead(404, {"Content-Type": "text/plain"});
-    response.end('Not found');
-  }
 });
 
-// Listen on port 8000, IP defaults to
+// route to create animal
+app.post('/animals', function (req, res) {
+    console.log("POST DATA", req.body);
+    // create a new animal with req.body
+    var animal = new Animal(req.body);
+    // save new animal to db
+    animal.save(function (err) {
+        if (err) {
+            console.log("Error saving animal");
+            res.render('index', { errors: animal.errors });
+        } else {
+            console.log("Successfully saved animal");
+            res.redirect('/');
+        }
+    });
+});

@@ -1,3 +1,7 @@
 function skillsMember() {
-    console.log('I am a member of the skills.js module')
+    var total = 0;
+    for (var i = 0; i < this.skills.length; i++) {
+        total += this.skills[i].years;
+    }
+    return total;
 }
